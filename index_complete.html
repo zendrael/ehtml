@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="application/javascript" src="main.js"></script>
+  </head>
+
+  <body>
+    <script type="application/javascript">
+      window.onload = function () {
+        rtl.run();
+      };
+    </script>
+    <!-- 🔄 GET + data-target + data-swap -->
+    <button data-get="/hello.html" data-target="next" data-swap="innerHTML">
+      Carregar conteúdo abaixo
+    </button>
+    <div class="destino">Este conteúdo será substituído</div>
+
+    <!-- ✅ POST com formulário -->
+    <form>
+      <input type="text" name="nome" placeholder="Seu nome" />
+      <button
+        type="submit"
+        data-post="/enviar"
+        data-target="parent"
+        data-swap="outerHTML"
+      >
+        Enviar
+      </button>
+    </form>
+
+    <!-- 🧠 Handler Pascal definido via ehtml.AddHandler -->
+    <input type="text" id="campoNome" name="nome" value="Fulano" />
+    <button data-handler="meuHandler" data-include="#campoNome">
+      Executar Handler Pascal
+    </button>
+
+    <!-- 📡 PUT com confirmação -->
+    <button
+      data-put="/atualizar"
+      data-confirm="Tem certeza que deseja atualizar?"
+    >
+      Atualizar Dados
+    </button>
+
+    <!-- 🔁 PATCH com swap beforeend -->
+    <!-- <button
+      data-patch="/atualiza-parcial"
+      data-target="closest .destino"
+      data-swap="beforeend"
+    >
+      Adicionar mais conteúdo
+    </button> -->
+
+    <!-- ❌ DELETE com previous selector -->
+    <div>Remova este conteúdo</div>
+    <button data-delete="/remover" data-target="previous" data-swap="outerHTML">
+      Remover
+    </button>
+
+    <!-- 🔄 data-trigger: load -->
+    <div
+      data-get="/inicio"
+      data-trigger="load"
+      data-target="this"
+      data-swap="innerHTML"
+    >
+      Carregando automaticamente ao abrir a página...
+    </div>
+
+    <!-- ⏱️ data-trigger: every 5s -->
+    <!-- <div
+      data-get="/atualiza-automatica"
+      data-trigger="every 5s"
+      data-target="this"
+      data-swap="innerHTML"
+    >
+      Atualiza a cada 5 segundos
+    </div> -->
+
+    <!-- 🖱️ data-trigger: mouseover -->
+    <!-- <button
+      data-get="/tooltip"
+      data-trigger="mouseover"
+      data-target="next"
+      data-swap="afterend"
+    >
+      Passe o mouse
+    </button> -->
+  </body>
+</html>

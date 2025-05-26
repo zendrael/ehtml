@@ -1,0 +1,9 @@
+/*
+    file:        stylesheet.css
+    description: minimal project css source file
+    source:      https://github.com/zendrael/create_pas2js_app
+*/
+
+h1 {
+    padding: 20px;
+}
