@@ -14,6 +14,12 @@ PAS2JSZIP="https://getpas2js.freepascal.org/downloads/linux/pas2js-linux-x86_64-
 # macOS 
 # https://getpas2js.freepascal.org/downloads/darwin/pas2js-darwin-x86_64-current.zip
 
+# if the folder $PAS2JSDIR/pas2js does not exist, create it
+if [ ! -d $PAS2JSDIR ]; then
+  echo "Creating directory $PAS2JSDIR..."
+  mkdir -p $PAS2JSDIR
+fi
+
 echo "Checking installation..."
 if [ ! -d $PAS2JSDIR/pas2js ]; then
   echo "Downloading..."

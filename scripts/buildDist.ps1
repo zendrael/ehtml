@@ -20,7 +20,6 @@ Write-Host "Cleaning dist dir..."
 Remove-Item -Path dist\* -Recurse -Force
 
 Write-Host "Copying files..."
-Copy-Item -Path index.html -Destination dist\
 Copy-Item -Path public\* -Destination dist\ -Recurse
 
 Write-Host "Compiling to dist..."
@@ -39,6 +38,20 @@ Write-Host "Moving JS file to dist..."
 Move-Item -Path src\main.js -Destination dist\
 
 # Add here your compression / uglify / mininfy code to run on top of the main.js file
+# check if nodejs is installed
+if (Get-Command node -ErrorAction SilentlyContinue) {
+  Write-Host "Node.js is installed, running minification..."
+  $minify = Start-Process -FilePath "npx" -ArgumentList "terser dist/main.js -o dist/main.min.js --compress --mangle" -NoNewWindow -Wait -PassThru
+  if ($minify.ExitCode -ne 0) {
+    Write-Host "Minification error! Check your source code!"
+    exit 0
+  }
+  # Optionally rename the minified file
+  Move-Item -Path dist\main.min.js -Destination dist\main.js -Force
+  Write-Host "Minification done!"
+} else {
+  Write-Host "Node.js is not installed, skipping minification."
+}
 
 Write-Host ""
 Write-Host "Done!"

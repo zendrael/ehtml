@@ -33,7 +33,6 @@ echo "Cleaning dist dir..."
 rm -Rf dist/*
 
 echo "Copying files..."
-cp index.html dist/
 cp -r public/* dist/
 
 echo "Compiling to dist..."

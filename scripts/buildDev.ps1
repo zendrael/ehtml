@@ -21,7 +21,6 @@ Write-Host "Cleaning dev dir..."
 Remove-Item -Path dev\* -Recurse -Force
 
 Write-Host "Copying files..."
-Copy-Item -Path index.html -Destination dev\
 Copy-Item -Path public\* -Destination dev\ -Recurse
 
 Write-Host "Compiling to dev..."
