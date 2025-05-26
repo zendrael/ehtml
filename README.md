@@ -8,6 +8,14 @@ This takes inpirations from HTMX and DATASTAR libraries.
 
 Docs and examples: https://zendrael.github.io/ehtml
 
+## How to use it?
+
+Just add it to your project as:
+
+```
+<script src="ehtml.min.js"></script>
+```
+
 ## Can I use it with my <name_tech_here> project?
 
 Yes! It can be used on any web project, just add it to your index.html and you are ready to use EHTML in your project, does not matter the other technologies you are using in your frontend.
