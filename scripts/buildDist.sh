@@ -52,6 +52,20 @@ echo "Moving JS file to dist..."
 mv src/main.js dist/
 
 # Add here your compression / uglify / mininfy code to run on top of the main.js file
+# check if nodejs is installed
+if command -v node >/dev/null 2>&1; then
+  echo "Node.js is installed, running minification..."
+  npx terser dist/main.js -o dist/main.min.js --compress --mangle
+  if [ $? -ne 0 ]; then
+    echo "Minification error! Check your source code!"
+    exit 0
+  fi
+  # Optionally rename the minified file
+  mv dist/main.min.js dist/main.js
+  echo "Minification done!"
+else
+  echo "Node.js is not installed, skipping minification."
+fi
 
 echo ""
 echo "Done!"
