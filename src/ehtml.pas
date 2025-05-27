@@ -1,7 +1,3 @@
-// ehtml.pas - Biblioteca EHTML (Enhanced HTML)
-// Compatível com pas2JS 3.0.1
-// Inspirado em htmx, mas usando atributos data-* ao invés de hx-*
-
 unit ehtml;
 
 {$mode objfpc}{$H+}
@@ -9,231 +5,189 @@ unit ehtml;
 interface
 
 uses
-  SysUtils, JS, Web;
+  JS, Web, Classes, SysUtils;
 
+const
+  EHTML_VERSION = '0.8.0';
+
+/// Type alias for Pascal handler procedures
 type
-  TEHTMLHandler = procedure(el: TJSHTMLElement);
+  TEhtmlHandler = procedure(el: TJSHTMLElement); 
 
 var
-  Handlers: TJSMap;
+  /// Stores all registered handlers linked to `data-handler` attributes
+  HandlerMap: specialize TStringHashMap<TEhtmlHandler>;
 
-procedure InitEHTML;
-procedure AddHandler(const name: string; handler: TEHTMLHandler);
+/// Registers a named handler to be used with `data-handler="handlerName"`
+procedure AddHandler(const name: string; handler: TEhtmlHandler);
+
+/// Initializes EHTML behavior for all DOM elements
+procedure InitializeEhtml;
 
 implementation
 
-var
-  Loaded: Boolean = False;
+uses
+  Types;
 
-procedure AddHandler(const name: string; handler: TEHTMLHandler);
+procedure AddHandler(const name: string; handler: TEhtmlHandler);
 begin
-  Handlers.set(name, TJSValue(handler));
+  HandlerMap[name] := handler;
 end;
 
-function FindTarget(el: TJSHTMLElement; sel: string): TJSHTMLElement;
-var
-  selector, mode: String;
-  parent: TJSNode;
+function GetAttribute(el: TJSHTMLElement; const attr: string): string;
 begin
-  Result := nil;
-  sel := Trim(sel);
-  if sel = '' then exit;
-
-  if Pos('closest ', sel) = 1 then
-  begin
-    selector := Copy(sel, 9, Length(sel));
-    if el.closest(selector) <> nil then
-      Result := TJSHTMLElement(el.closest(selector));
-  end
-  else if Pos('next ', sel) = 1 then
-  begin
-    selector := Copy(sel, 6, Length(sel));
-    if (el.nextElementSibling <> nil) and TJSHTMLElement(el.nextElementSibling).matches(selector) then
-      Result := TJSHTMLElement(el.nextElementSibling);
-  end
-  else if Pos('previous ', sel) = 1 then
-  begin
-    selector := Copy(sel, 10, Length(sel));
-    if (el.previousElementSibling <> nil) and TJSHTMLElement(el.previousElementSibling).matches(selector) then
-      Result := TJSHTMLElement(el.previousElementSibling);
-  end
+  if el.hasAttribute(attr) then
+    Result := el.getAttribute(attr)
   else
-    Result := TJSHTMLElement(document.querySelector(sel));
+    Result := '';
 end;
 
-procedure ProcessElement(el: TJSHTMLElement);
+function FindTarget(el: TJSHTMLElement; targetStr: string): TJSHTMLElement;
 var
-  verb, url, swap, trigger, targetSel, confirmMsg, pushUrl, replaceUrl: string;
-  targetEl: TJSHTMLElement;
-  isSync, isPending: Boolean;
-  formData: TJSFormData;
-  headers: TJSObject;
-  requestInit: TJSObject;
-  handlerName: String;
-  handler: TEHTMLHandler;
-
-  procedure CleanupPending;
-  begin
-    if el.hasAttribute('data-sync') then
-      el.removeAttribute('data-ehtml-pending');
-  end;
-
+  target: TJSHTMLElement;
 begin
-  // Confirmação opcional
-  if el.hasAttribute('data-confirm') then
-  begin
-    confirmMsg := el.getAttribute('data-confirm');
-    if not window.confirm(confirmMsg) then exit;
+  if (targetStr = '') or (targetStr = 'this') then
+    Exit(el)
+  else if targetStr.StartsWith('closest ') then
+    Exit(TJSHTMLElement(el.closest(Copy(targetStr, 9, Length(targetStr)))));
+
+  if targetStr = 'next' then
+    target := TJSHTMLElement(el.nextElementSibling)
+  else if targetStr = 'previous' then
+    target := TJSHTMLElement(el.previousElementSibling)
+  else
+    target := TJSHTMLElement(document.querySelector(targetStr));
+  
+  Exit(target);
+end;
+
+procedure PerformSwap(target: TJSHTMLElement; content: string; swapType: string);
+begin
+  if target = nil then Exit;
+  case swapType of
+    'outerHTML': target.outerHTML := content;
+    'beforebegin': target.insertAdjacentHTML('beforebegin', content);
+    'afterbegin': target.insertAdjacentHTML('afterbegin', content);
+    'beforeend': target.insertAdjacentHTML('beforeend', content);
+    'afterend': target.insertAdjacentHTML('afterend', content);
+    else target.innerHTML := content;
   end;
+end;
 
-  // Evita múltiplas requisições simultâneas se data-sync estiver presente
-  if el.hasAttribute('data-sync') then
+procedure ApplyIndicator(indicatorSel: string; show: boolean);
+var
+  el: TJSHTMLElement;
+begin
+  if indicatorSel = '' then Exit;
+  el := TJSHTMLElement(document.querySelector(indicatorSel));
+  if el <> nil then
   begin
-    if el.hasAttribute('data-ehtml-pending') then exit;
-    el.setAttribute('data-ehtml-pending', 'true');
+    if show then
+      el.removeAttribute('style')
+    else
+      el.setAttribute('style', 'display: none');
   end;
+end;
 
-  // Obtém verbo e URL
-  verb := LowerCase(el.getAttributeNames().find(@(s) => Copy(s, 1, 5) = 'data-')
-           .filter(@(s) => (s = 'data-get') or (s = 'data-post') or (s = 'data-put') or (s = 'data-delete') or (s = 'data-patch'))[0]);
-  url := el.getAttribute(verb);
-  verb := Copy(verb, 6, Length(verb));
+procedure HandleEvent(el: TJSHTMLElement);
+var
+  method, url, swap, targetSel, confirmMsg, includeSel, vals, params, headers, handlerName: string;
+  targetEl, indicatorEl: TJSHTMLElement;
+  xhr: TJSXMLHttpRequest;
+begin
+  confirmMsg := GetAttribute(el, 'data-confirm');
+  if (confirmMsg <> '') and (not window.confirm(confirmMsg)) then Exit;
 
-  // Target
-  targetSel := el.getAttribute('data-target');
+  method := LowerCase(GetAttribute(el, 'data-get'));
+  if method = '' then method := LowerCase(GetAttribute(el, 'data-post'));
+  if method = '' then method := LowerCase(GetAttribute(el, 'data-put'));
+  if method = '' then method := LowerCase(GetAttribute(el, 'data-delete'));
+  if method = '' then method := LowerCase(GetAttribute(el, 'data-patch'));
+
+  url := GetAttribute(el, 'data-get');
+  if url = '' then url := GetAttribute(el, 'data-post');
+  if url = '' then url := GetAttribute(el, 'data-put');
+  if url = '' then url := GetAttribute(el, 'data-delete');
+  if url = '' then url := GetAttribute(el, 'data-patch');
+
+  targetSel := GetAttribute(el, 'data-target');
   targetEl := FindTarget(el, targetSel);
+  swap := GetAttribute(el, 'data-swap');
+  if swap = '' then swap := 'innerHTML';
 
-  // Swap
-  if el.hasAttribute('data-swap') then
-    swap := el.getAttribute('data-swap') else
-    swap := 'innerHTML';
+  includeSel := GetAttribute(el, 'data-include');
+  vals := GetAttribute(el, 'data-vals');
+  params := GetAttribute(el, 'data-params');
+  headers := GetAttribute(el, 'data-headers');
 
-  // Headers (simples, JSON string)
-  headers := new(['Content-Type', 'application/x-www-form-urlencoded']);
-  if el.hasAttribute('data-headers') then
-  begin
+  ApplyIndicator(GetAttribute(el, 'data-indicator'), True);
+
+  xhr := TJSXMLHttpRequest.new;
+  xhr.open(method, url);
+
+  if headers <> '' then
     try
-      var extra := TJSJSON.parse(el.getAttribute('data-headers'));
-      var key: JSString;
-      for key in Object.keys(extra) do
-        headers[key] := extra[key];
+      var parsed := TJSJSON.parse(headers);
+      for var k in JSForIn(parsed) do
+        xhr.setRequestHeader(k, parsed[k]);
     except
       console.warn('Invalid data-headers JSON');
     end;
+
+  xhr.onload := procedure
+  begin
+    ApplyIndicator(GetAttribute(el, 'data-indicator'), False);
+    PerformSwap(targetEl, xhr.responseText, swap);
   end;
 
-  // Form data / parâmetros (por enquanto do próprio elemento apenas)
-  formData := new(TJSFormData);
-  if el.hasAttribute('data-vals') then
-  begin
-    var kv := TJSJSON.parse(el.getAttribute('data-vals'));
-    var k: JSString;
-    for k in Object.keys(kv) do
-      formData.append(k, kv[k]);
-  end;
-
-  // Disable (temporário)
-  if el.hasAttribute('data-disable') then
-    el.setAttribute('disabled', 'true');
-
-  // Indicador
-  var indicator: TJSHTMLElement;
-  if el.hasAttribute('data-indicator') then
-  begin
-    indicator := TJSHTMLElement(document.querySelector(el.getAttribute('data-indicator')));
-    if indicator <> nil then
-      indicator.style.setProperty('display', '');
-  end;
-
-  // Requisição
-  requestInit := new;
-  requestInit['method'] := UpperCase(verb);
-  requestInit['headers'] := headers;
-  if (verb <> 'get') then
-    requestInit['body'] := formData;
-
-  window.fetch(url, requestInit).then(@(response: TJSResponse)
-  begin
-    response.text().then(@(html: string)
-    begin
-      // Atualiza conteúdo
-      if (targetEl <> nil) then
-      begin
-        if swap = 'outerHTML' then
-          targetEl.outerHTML := html
-        else if swap = 'beforebegin' then
-          targetEl.insertAdjacentHTML('beforebegin', html)
-        else if swap = 'afterbegin' then
-          targetEl.insertAdjacentHTML('afterbegin', html)
-        else if swap = 'beforeend' then
-          targetEl.insertAdjacentHTML('beforeend', html)
-        else if swap = 'afterend' then
-          targetEl.insertAdjacentHTML('afterend', html)
-        else
-          targetEl.innerHTML := html;
-      end;
-
-      // Restaura botão
-      if el.hasAttribute('data-disable') then
-        el.removeAttribute('disabled');
-
-      // Oculta indicador
-      if indicator <> nil then
-        indicator.style.setProperty('display', 'none');
-
-      // URL: push ou replace
-      if el.hasAttribute('data-replace-url') then
-      begin
-        replaceUrl := el.getAttribute('data-replace-url');
-        if replaceUrl <> '' then
-          window.history.replaceState(nil, '', replaceUrl);
-      end;
-      if el.hasAttribute('data-push-url') then
-      begin
-        pushUrl := el.getAttribute('data-push-url');
-        if pushUrl <> '' then
-          window.history.pushState(nil, '', pushUrl);
-      end;
-
-      CleanupPending;
-    end);
-  end).catch(@(err: JSValue)
-  begin
-    CleanupPending;
-    console.error('EHTML request failed:', err);
-  end);
+  if method = 'get' then
+    xhr.send
+  else
+    xhr.send(nil); // TODO: add body from form or data-vals/params
 end;
 
-procedure InitEHTML;
+procedure InitHandlers;
 begin
-  if Loaded then exit;
-  Loaded := True;
-
-  Handlers := TJSMap.new;
-
-  document.addEventListener('click', procedure(e: TJSEvent)
-  var
-    target: TJSHTMLElement;
-    attr: String;
+  for var node in document.querySelectorAll('[data-handler]') do
   begin
-    target := TJSHTMLElement(e.target);
-    if target = nil then exit;
+    var el := TJSHTMLElement(node);
+    var trig := GetAttribute(el, 'data-trigger');
+    if trig = '' then trig := 'click';
 
-    // Verifica se há algum data-trigger="click"
-    if target.hasAttribute('data-trigger') and (target.getAttribute('data-trigger') = 'click') then
+    el.addEventListener(trig, procedure()
+    var name := GetAttribute(el, 'data-handler');
     begin
-      e.preventDefault;
-      ProcessElement(target);
-    end;
-
-    // data-handler
-    if target.hasAttribute('data-handler') then
-    begin
-      var hname := target.getAttribute('data-handler');
-      if Handlers.has(hname) then
-        TEHTMLHandler(Handlers.get(hname))(target);
-    end;
-  end);
+      if HandlerMap.contains(name) then
+        HandlerMap[name](el);
+    end);
+  end;
 end;
+
+procedure InitActions;
+begin
+  for var node in document.querySelectorAll('[data-get], [data-post], [data-put], [data-delete], [data-patch]') do
+  begin
+    var el := TJSHTMLElement(node);
+    var trig := GetAttribute(el, 'data-trigger');
+    if trig = '' then trig := 'click';
+
+    el.addEventListener(trig, procedure()
+    begin
+      HandleEvent(el);
+    end);
+  end;
+end;
+
+procedure InitializeEhtml;
+begin
+  if HandlerMap = nil then
+    HandlerMap := specialize TStringHashMap<TEhtmlHandler>.Create;
+
+  InitHandlers;
+  InitActions;
+end;
+
+initialization
+  InitializeEhtml;
 
 end.
