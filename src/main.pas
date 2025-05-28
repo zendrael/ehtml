@@ -11,6 +11,6 @@ begin
 end;
 
 begin
-  ehtml.Initialize;
-  ehtml.AddHandler('meuHandler', @MyHandler);
+  ehtml.InitEHTML;
+  // ehtml.AddHandler('meuHandler', @MyHandler);
 end.
