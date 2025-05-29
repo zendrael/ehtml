@@ -3,14 +3,14 @@ program main;
 {$mode objfpc}{$H+}
 
 uses
-  Web, ehtml;
+  Web, ehtmlunit;
 
-procedure MyHandler(el: TJSHTMLElement; data: TJSFormData);
-begin
-  window.alert('Handler acionado!');
-end;
+// procedure MyHandler;
+// begin
+//   window.alert('Handler acionado!');
+// end;
 
 begin
-  ehtml.InitEHTML;
-  ehtml.AddHandler('meuHandler', @MyHandler);
+  // ehtml.InitEHTML;
+  // ehtml.AddHandler('meuHandler', @MyHandler);
 end.

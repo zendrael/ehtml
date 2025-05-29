@@ -1,21 +1,586 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EHTML Library Demo</title>
     <script type="application/javascript" src="main.js"></script>
     <script type="application/javascript">
       window.onload = function () {
         rtl.run();
       };
     </script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .container {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: #e8f5e8;
+        border: 1px solid #4caf50;
+        border-radius: 3px;
+        min-height: 30px;
+      }
+
+      .error {
+        background-color: #ffeaea;
+        border-color: #f44336;
+        color: #d32f2f;
+      }
+
+      button,
+      input[type="submit"] {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+
+      button:hover,
+      input[type="submit"]:hover {
+        background-color: #0056b3;
+      }
+
+      input[type="text"],
+      input[type="email"],
+      textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+
+      .form-group {
+        margin: 10px 0;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+
+      .demo-section {
+        margin: 30px 0;
+        padding: 20px;
+        border-left: 4px solid #007bff;
+        background-color: #f8f9fa;
+      }
+
+      h1,
+      h2,
+      h3 {
+        color: #333;
+      }
+
+      code {
+        background-color: #f1f1f1;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: "Courier New", monospace;
+      }
+
+      .loading {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+    </style>
   </head>
-
   <body>
-    <div data-handler="meuHandler">Handler</div>
+    <h1>EHTML Library Demo</h1>
+    <p>
+      This page demonstrates the EHTML library functionality using
+      <code>data-*</code> attributes.
+    </p>
 
-    <div data-trigger="click" data-get="hello.html" data-target="#content">
-      hello!
+    <!-- Basic GET Request Example -->
+    <div class="demo-section">
+      <h2>1. Basic GET Request</h2>
+      <p>Click the button to load content via GET request:</p>
+
+      <button data-get="/api/hello" data-target="#get-result">
+        Load Content
+      </button>
+
+      <div id="get-result" class="result">Results will appear here...</div>
     </div>
 
-    <div id="content"></div>
+    <!-- POST Form Example -->
+    <div class="demo-section">
+      <h2>2. POST Form Submission</h2>
+      <p>Submit this form using EHTML POST:</p>
+
+      <form data-post="/api/contact" data-target="#form-result">
+        <div class="form-group">
+          <label for="name">Name:</label>
+          <input type="text" id="name" name="name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required />
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message:</label>
+          <textarea id="message" name="message" rows="4" required></textarea>
+        </div>
+
+        <input type="submit" value="Send Message" />
+      </form>
+
+      <div id="form-result" class="result">
+        Form submission results will appear here...
+      </div>
+    </div>
+
+    <!-- Different Swap Strategies -->
+    <div class="demo-section">
+      <h2>3. Different Swap Strategies</h2>
+      <p>Try different ways to insert content:</p>
+
+      <div class="container">
+        <button
+          data-get="/api/content"
+          data-target="#swap-demo"
+          data-swap="beforebegin"
+        >
+          Insert Before
+        </button>
+
+        <button
+          data-get="/api/content"
+          data-target="#swap-demo"
+          data-swap="afterbegin"
+        >
+          Insert at Start
+        </button>
+
+        <button
+          data-get="/api/content"
+          data-target="#swap-demo"
+          data-swap="innerhtml"
+        >
+          Replace Content
+        </button>
+
+        <button
+          data-get="/api/content"
+          data-target="#swap-demo"
+          data-swap="beforeend"
+        >
+          Insert at End
+        </button>
+
+        <button
+          data-get="/api/content"
+          data-target="#swap-demo"
+          data-swap="afterend"
+        >
+          Insert After
+        </button>
+
+        <div id="swap-demo" class="result">
+          <p>Original content in the target div.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Triggers -->
+    <div class="demo-section">
+      <h2>4. Custom Triggers</h2>
+      <p>Different events that can trigger requests:</p>
+
+      <div class="form-group">
+        <label>Mouse Over Trigger:</label>
+        <div
+          data-get="/api/hover-info"
+          data-target="#hover-result"
+          data-trigger="mouseover"
+          style="
+            padding: 10px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+          "
+        >
+          Hover over me to load content
+        </div>
+        <div id="hover-result" class="result"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Focus Trigger:</label>
+        <input
+          type="text"
+          placeholder="Focus on this input to load content"
+          data-get="/api/focus-info"
+          data-target="#focus-result"
+          data-trigger="focus"
+        />
+        <div id="focus-result" class="result"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Change Trigger:</label>
+        <select
+          data-get="/api/select-info"
+          data-target="#select-result"
+          data-trigger="change"
+        >
+          <option value="">Select an option...</option>
+          <option value="option1">Option 1</option>
+          <option value="option2">Option 2</option>
+          <option value="option3">Option 3</option>
+        </select>
+        <div id="select-result" class="result"></div>
+      </div>
+    </div>
+
+    <!-- HTTP Methods -->
+    <div class="demo-section">
+      <h2>5. Different HTTP Methods</h2>
+      <p>Examples of PUT, DELETE, and PATCH requests:</p>
+
+      <button
+        data-put="/api/resource/123"
+        data-target="#method-result"
+        data-headers='{"Content-Type": "application/json"}'
+      >
+        PUT Request
+      </button>
+
+      <button data-delete="/api/resource/123" data-target="#method-result">
+        DELETE Request
+      </button>
+
+      <button data-patch="/api/resource/123" data-target="#method-result">
+        PATCH Request
+      </button>
+
+      <div id="method-result" class="result">
+        HTTP method results will appear here...
+      </div>
+    </div>
+
+    <!-- Dynamic Content Loading -->
+    <div class="demo-section">
+      <h2>6. Dynamic Content with Auto-Processing</h2>
+      <p>Load content that contains more EHTML elements:</p>
+
+      <button data-get="/api/dynamic-content" data-target="#dynamic-result">
+        Load Dynamic Content
+      </button>
+
+      <div id="dynamic-result" class="result">
+        Dynamic content will be loaded here...
+      </div>
+    </div>
+
+    <!-- Error Handling Demo -->
+    <div class="demo-section">
+      <h2>7. Error Handling</h2>
+      <p>Test error scenarios:</p>
+
+      <button data-get="/api/not-found" data-target="#error-result">
+        404 Error Test
+      </button>
+
+      <button data-get="/api/server-error" data-target="#error-result">
+        500 Error Test
+      </button>
+
+      <div id="error-result" class="result">Error handling results...</div>
+    </div>
+
+    <!-- Mock Server Simulation -->
+    <script>
+      // Mock server responses for demonstration
+      // In a real application, these would be actual server endpoints
+
+      // Intercept fetch requests to simulate server responses
+      const originalFetch = window.fetch;
+      window.fetch = function (url, options) {
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            const mockResponse = getMockResponse(url, options);
+            resolve({
+              ok: mockResponse.status >= 200 && mockResponse.status < 300,
+              status: mockResponse.status,
+              statusText: mockResponse.statusText,
+              text: () => Promise.resolve(mockResponse.body),
+              json: () => Promise.resolve(JSON.parse(mockResponse.body)),
+            });
+          }, 500); // Simulate network delay
+        });
+      };
+
+      function getMockResponse(url, options) {
+        const method = options?.method || "GET";
+
+        switch (url) {
+          case "/api/hello":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: "<p><strong>Hello from the server!</strong> This content was loaded via GET request.</p>",
+            };
+
+          case "/api/contact":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: '<p class="success">✅ Message sent successfully! Thank you for your submission.</p>',
+            };
+
+          case "/api/content":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: '<p style="background-color: #ffffcc; padding: 5px; margin: 2px;">📦 New content block added!</p>',
+            };
+
+          case "/api/hover-info":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: "<p>🐭 Mouse hover detected! Content loaded dynamically.</p>",
+            };
+
+          case "/api/focus-info":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: "<p>🎯 Input focused! This content appeared automatically.</p>",
+            };
+
+          case "/api/select-info":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: "<p>📋 Selection changed! You selected an option.</p>",
+            };
+
+          case "/api/resource/123":
+            const methodName = method.toUpperCase();
+            return {
+              status: 200,
+              statusText: "OK",
+              body: `<p>✨ ${methodName} request completed successfully for resource #123</p>`,
+            };
+
+          case "/api/dynamic-content":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: `
+                            <div style="border: 2px solid #4caf50; padding: 15px; margin: 10px 0;">
+                                <h4>🚀 Dynamic Content Loaded!</h4>
+                                <p>This content was loaded dynamically and contains its own EHTML elements:</p>
+                                
+                                <button data-get="/api/nested-content" 
+                                        data-target="#nested-result">
+                                    Load Nested Content
+                                </button>
+                                
+                                <div id="nested-result" style="margin-top: 10px; padding: 10px; background-color: #f0f8ff;">
+                                    Nested content will appear here...
+                                </div>
+                            </div>
+                        `,
+            };
+
+          case "/api/nested-content":
+            return {
+              status: 200,
+              statusText: "OK",
+              body: "<p>🎉 Nested content loaded! EHTML automatically processed this new element.</p>",
+            };
+
+          case "/api/not-found":
+            return {
+              status: 404,
+              statusText: "Not Found",
+              body: '<p class="error">❌ 404 - Resource not found</p>',
+            };
+
+          case "/api/server-error":
+            return {
+              status: 500,
+              statusText: "Internal Server Error",
+              body: '<p class="error">❌ 500 - Internal server error</p>',
+            };
+
+          default:
+            return {
+              status: 404,
+              statusText: "Not Found",
+              body: '<p class="error">❌ Unknown endpoint</p>',
+            };
+        }
+      }
+
+      // Override XMLHttpRequest for EHTML library compatibility
+      const originalXHR = window.XMLHttpRequest;
+      window.XMLHttpRequest = function () {
+        const xhr = new originalXHR();
+        const originalOpen = xhr.open;
+        const originalSend = xhr.send;
+
+        xhr.open = function (method, url, async) {
+          this._method = method;
+          this._url = url;
+          return originalOpen.call(this, method, url, async);
+        };
+
+        xhr.send = function (data) {
+          const self = this;
+          setTimeout(() => {
+            const mockResponse = getMockResponse(this._url, {
+              method: this._method,
+              body: data,
+            });
+
+            // Set response properties
+            Object.defineProperty(self, "status", {
+              value: mockResponse.status,
+              writable: false,
+            });
+            Object.defineProperty(self, "statusText", {
+              value: mockResponse.statusText,
+              writable: false,
+            });
+            Object.defineProperty(self, "responseText", {
+              value: mockResponse.body,
+              writable: false,
+            });
+            Object.defineProperty(self, "readyState", {
+              value: 4,
+              writable: false,
+            });
+
+            // Trigger state change
+            if (self.onreadystatechange) {
+              self.onreadystatechange();
+            }
+          }, 500);
+        };
+
+        return xhr;
+      };
+    </script>
+
+    <!-- Include the compiled EHTML library -->
+    <!-- In a real application, you would include the compiled JavaScript file from Pas2JS -->
+    <script>
+      // This would be your compiled EHTML.js file from Pas2JS
+      console.log(
+        "EHTML Library Demo loaded. In a real application, include your compiled EHTML.js file here."
+      );
+      console.log(
+        "Compile your Pascal unit with: pas2js -Jirtl.js -Jc ehtml.pas"
+      );
+    </script>
+
+    <div class="demo-section">
+      <h2>📋 Usage Instructions</h2>
+      <div
+        style="
+          background-color: #fff3cd;
+          border: 1px solid #ffeaa7;
+          padding: 15px;
+          border-radius: 5px;
+        "
+      >
+        <h3>To use this library in your project:</h3>
+        <ol>
+          <li>
+            <strong>Compile the Pascal unit:</strong> <br /><code
+              >pas2js -Jirtl.js -Jc ehtml.pas</code
+            >
+          </li>
+          <li>
+            <strong>Include the generated JavaScript file in your HTML:</strong>
+            <br /><code>&lt;script src="ehtml.js"&gt;&lt;/script&gt;</code>
+          </li>
+          <li>
+            <strong>Use data-* attributes in your HTML elements:</strong>
+            <ul>
+              <li><code>data-get="/api/endpoint"</code> - GET request</li>
+              <li><code>data-post="/api/endpoint"</code> - POST request</li>
+              <li><code>data-put="/api/endpoint"</code> - PUT request</li>
+              <li><code>data-delete="/api/endpoint"</code> - DELETE request</li>
+              <li><code>data-patch="/api/endpoint"</code> - PATCH request</li>
+              <li>
+                <code>data-target="#element-id"</code> - Where to place response
+              </li>
+              <li>
+                <code
+                  >data-swap="innerHTML|outerHTML|beforebegin|afterbegin|beforeend|afterend|delete|none"</code
+                >
+                - How to insert content
+              </li>
+              <li>
+                <code
+                  >data-trigger="click|change|submit|load|focus|blur|keyup|keydown|mouseover|mouseout"</code
+                >
+                - What event triggers the request
+              </li>
+              <li>
+                <code>data-headers='{"Custom-Header": "value"}'</code> - Custom
+                headers (JSON format)
+              </li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>Key Features:</h3>
+        <ul>
+          <li>✅ Automatic initialization on DOM ready</li>
+          <li>✅ Form serialization for POST/PUT/PATCH requests</li>
+          <li>✅ Multiple swap strategies for content insertion</li>
+          <li>✅ Custom event triggers</li>
+          <li>✅ Automatic processing of dynamically loaded content</li>
+          <li>✅ Error handling and logging</li>
+          <li>✅ Support for custom headers</li>
+          <li>✅ Compatible with all modern browsers</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer
+      style="
+        margin-top: 50px;
+        padding: 20px;
+        border-top: 1px solid #ddd;
+        text-align: center;
+        color: #666;
+      "
+    >
+      <p>
+        <strong>EHTML Library</strong> - A htmx-like library for
+        FreePascal/Pas2JS
+      </p>
+      <p>Built with ❤️ using Object Pascal and compiled to JavaScript</p>
+    </footer>
   </body>
 </html>

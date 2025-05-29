@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="application/javascript" src="main.js"></script>
+    <script type="application/javascript">
+      window.onload = function () {
+        rtl.run();
+      };
+    </script>
+  </head>
+
+  <body>
+    <div data-trigger="mouseover" data-handler="meuHandler">Handler</div>
+
+    <div data-trigger="click" data-get="hello.html" data-target="#content">
+      hello!
+    </div>
+
+    <div id="content"></div>
+
+    <div data-trigger="click" data-get="onloaded.html" data-target="innerHTML">
+      hello!
+    </div>
+  </body>
+</html>
