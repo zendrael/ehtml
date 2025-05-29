@@ -9,6 +9,7 @@ uses
 
 type
   TProcedureRef = reference to procedure;
+  TStringArray = array of string;
 
 procedure InitEHTML;
 procedure AddHandler(const Name: string; Handler: TProcedureRef);
@@ -40,7 +41,7 @@ begin
       resultStr += encodeURIComponent(key) + '=' + encodeURIComponent(value);
     end;
   except
-    console.warn('EHTML: Failed to convert JSON to URL params');
+    WriteLn('EHTML: Failed to convert JSON to URL params');
   end;
   
   Result := resultStr;
@@ -54,7 +55,6 @@ begin
   formData := TJSFormData.new(form);
   params := TJSURLSearchParams.new;
   
-  // Converte FormData para URLSearchParams
   asm
     for (const pair of formData.entries()) {
       params.append(pair[0], pair[1]);
@@ -82,6 +82,8 @@ end;
 function FindTargetElement(el: TJSElement; customTarget: String = ''): TJSElement;
 var
   targetSel: string;
+  current: TJSElement;
+  selector: String;
 begin
   Result := el;
   
@@ -97,7 +99,17 @@ begin
     if targetSel = 'this' then
       Exit(el)
     else if targetSel.StartsWith('closest ') then
-      WriteLn('EHTML: closest not implemented yet.') //Exit(el.closest(Copy(targetSel, 9, Length(targetSel))))
+    begin
+      selector := Copy(targetSel, 9, Length(targetSel));
+      current := el;
+      while Assigned(current) and (current <> document.body) do
+      begin
+        if current.matches(selector) then
+          Exit(current);
+        current := TJSElement(current.parentElement);
+      end;
+      Exit(el);
+    end
     else if targetSel.StartsWith('find ') then
       Exit(el.querySelector(Copy(targetSel, 6, Length(targetSel))))
     else if targetSel = 'next' then
@@ -107,7 +119,7 @@ begin
     else
       Exit(document.querySelector(targetSel));
   except
-    console.warn('EHTML: Invalid target selector: ' + targetSel);
+    WriteLn('EHTML: Invalid target selector: ' + targetSel);
     Exit(el);
   end;
 end;
@@ -130,7 +142,8 @@ end;
 procedure ExecuteElementAction(el: TJSElement);
 var
   url, verb, confirmMsg, headersStr: string;
-  targetEl, indicatorEl, errorTarget: TJSElement;
+  targetEl, errorTarget: TJSElement;
+  indicatorEl: TJSHTMLElement;
   xhr: TJSXMLHttpRequest;
   handlerName, includeSel, indicatorSel, paramsStr, swapType: string;
   bodyData: string;
@@ -138,7 +151,7 @@ var
   i: Integer;
   json: String;
   handler: TProcedureRef;
-  headerKeys: TJSStringDynArray;
+  headerKeys: TJSArray; // Alterado para TJSArray
   key, value: String;
 begin
   confirmMsg := el.getAttribute('data-confirm');
@@ -191,11 +204,11 @@ begin
   indicatorSel := el.getAttribute('data-indicator');
   if indicatorSel <> '' then
   begin
-    indicatorEl := document.querySelector(indicatorSel);
+    indicatorEl := TJSHTMLElement(document.querySelector(indicatorSel));
     if Assigned(indicatorEl) then
     begin
       indicatorEl.classList.add('ehtml-indicator');
-      // indicatorEl.style.setProperty('display', 'inline');
+      indicatorEl.style.setProperty('display', 'inline');
     end;
   end;
 
@@ -206,7 +219,7 @@ begin
     try
       headers := TJSJSON.parseObject(headersStr);
     except
-      console.warn('EHTML: Invalid data-headers JSON');
+      WriteLn('EHTML: Invalid data-headers JSON');
     end;
   end;
 
@@ -228,30 +241,33 @@ begin
         bodyData := json;
       end;
     except
-      console.warn('EHTML: Invalid JSON in data-vals');
+      WriteLn('EHTML: Invalid JSON in data-vals');
     end;
   end;
 
   paramsStr := el.getAttribute('data-params');
   if paramsStr <> '' then
   begin
-    if Pos('?', url) = 0 then
-      url += '?' + paramsStr
-    else
-      url += '&' + paramsStr;
+    // if Pos('?', url) = 0 then
+    //   url += '?' + paramsStr
+    // else
+    //   url += '&' + paramsStr;
   end;
 
   xhr := TJSXMLHttpRequest.new;
   xhr.open(verb, url, true);
 
-  // Configurar headers
-  headerKeys := TJSObject.keys(headers);
-  for i := 0 to Length(headerKeys) - 1 do
-  begin
-    key := String(headerKeys[i]);
-    value := String(headers[key]);
-    xhr.setRequestHeader(key, value);
-  end;
+  // Configurar headers - Versão corrigida
+  // if headersStr <> '' then
+  // begin
+  //   asm
+  //     var keys = Object.keys(headers);
+  //     for (var i = 0; i < keys.length; i++) {
+  //       var key = keys[i];
+  //       xhr.setRequestHeader(key, headers[key]);
+  //     }
+  //   end;
+  // end;
 
   // Configurar content-type para JSON se necessário
   if (bodyData <> '') and ( (verb = 'POST') or (verb = 'PUT') or (verb = 'PATCH') ) then
@@ -263,11 +279,11 @@ begin
     begin
       if indicatorSel <> '' then
       begin
-        indicatorEl := document.querySelector(indicatorSel);
+        indicatorEl := TJSHTMLElement(document.querySelector(indicatorSel));
         if Assigned(indicatorEl) then
         begin
           indicatorEl.classList.remove('ehtml-indicator');
-          // indicatorEl.style.setProperty('display', 'none');
+          indicatorEl.style.setProperty('display', 'none');
         end;
       end;
 
@@ -310,10 +326,6 @@ var
   elList: TJSNodeList;
   i: Integer;
   el: TJSElement;
-  procedure Action(e: TJSEvent);
-      begin
-        ExecuteElementAction(el);
-      end;
 begin
   for ev in events do
   begin
@@ -321,7 +333,11 @@ begin
     for i := 0 to elList.length - 1 do
     begin
       el := TJSElement(elList[i]);
-      el.addEventListener(ev, @Action);
+      asm
+        el.addEventListener(ev, function(e) {
+          this.ExecuteElementAction(el);
+        }.bind(this));
+      end;
     end;
   end;
 end;
@@ -334,21 +350,6 @@ var
   onValue, eventName, eventFilter: String;
   seconds: Integer;
   eventParts: TJSStringDynArray;
-  // procedure ObserverProcedure(entries: TJSArray; observer: TJSIntersectionObserver);
-  // var
-  //   j: Integer;
-  //   entry: TJSIntersectionObserverEntry;
-  // begin
-  //   for j := 0 to entries.length - 1 do
-  //   begin
-  //     entry := TJSIntersectionObserverEntry(entries[j]);
-  //     if entry.isIntersecting then
-  //     begin
-  //       ExecuteElementAction(TJSElement(entry.target));
-  //       observer.unobserve(entry.target);
-  //     end;
-  //   end;
-  // end;
 begin
   elements := document.querySelectorAll('[data-on]');
   for i := 0 to elements.length - 1 do
@@ -376,25 +377,31 @@ begin
           end, seconds * 1000
         );
       except
-        console.warn('EHTML: Invalid interval in data-on: "' + eventName + '"');
+        WriteLn('EHTML: Invalid interval in data-on: "' + eventName + '"');
       end;
     end
     else if eventName = 'revealed' then
     begin
-      // var observer := new(JSIntersectionObserver, @ObserverProcedure);
-      // observer.observe(el);
-      WriteLn('EHTML: IntersectionObserver not implemented yet.');
+      asm
+        var observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              this.ExecuteElementAction(entry.target);
+              observer.unobserve(entry.target);
+            }
+          }.bind(this));
+        }.bind(this));
+        observer.observe(el);
+      end;
     end
     else if not ((eventName = 'load') or (eventName = 'every') or (eventName = 'revealed')) then
     begin
-      // TODO
-      // el.addEventListener(eventName, @procedure(e: TJSEvent)
-      // begin
-      //   if (eventFilter <> '') and (not TJSElement(e.target).matches(eventFilter)) then
-      //     Exit;
-          
-      //   ExecuteElementAction(el);
-      // end);
+      asm
+        el.addEventListener(eventName, function(e) {
+          if ((eventFilter !== '') && (!e.target.matches(eventFilter))) return;
+          this.ExecuteElementAction(el);
+        }.bind(this));
+      end;
     end;
   end;
 end;
@@ -406,6 +413,12 @@ var
   i: Integer;
   link: TJSHTMLAnchorElement;
   form: TJSHTMLFormElement;
+
+  procedure procEventSubmit(e: TJSEvent);
+    begin
+      e.preventDefault();
+      ExecuteElementAction(form);
+    end;
 begin
   links := document.querySelectorAll('a[data-boost="true"]');
   forms := document.querySelectorAll('form[data-boost="true"]');
@@ -423,12 +436,7 @@ begin
   for i := 0 to forms.length - 1 do
   begin
     form := TJSHTMLFormElement(forms[i]);
-    // TODO
-    // form.addEventListener('submit', procedure(e: TJSSubmitEvent)
-    // begin
-    //   e.preventDefault();
-    //   ExecuteElementAction(form);
-    // end);
+    form.addEventListener('submit', @procEventSubmit);
   end;
 end;
 
