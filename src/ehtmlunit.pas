@@ -29,6 +29,15 @@ type
     Headers: TJSObject;
     Element: TJSHTMLElement;
     
+    // === NOVOS CAMPOS PARA ALTA PRIORIDADE ===
+    Indicator: string;          // data-indicator
+    Confirm: string;           // data-confirm
+    PushURL: Boolean;          // data-push-url
+    ReplaceURL: Boolean;       // data-replace-url
+    ErrorTarget: string;       // data-error-target
+    ErrorSwap: TSwapStrategy;  // data-error-swap
+    // =========================================
+    
     constructor Create(AElement: TJSHTMLElement);
     procedure Execute;
   end;
@@ -50,6 +59,16 @@ type
     procedure AttachEventListener(AElement: TJSHTMLElement; AEventName: string; ARequest: TEHTMLRequest);
     procedure HandleResponse(ARequest: TEHTMLRequest; AResponse: string);
     procedure SwapContent(ATarget: TJSHTMLElement; AContent: string; AStrategy: TSwapStrategy);
+    
+    // === NOVOS MÉTODOS PARA ALTA PRIORIDADE ===
+    procedure ShowIndicator(const ASelector: string);
+    procedure HideIndicator(const ASelector: string);
+    function ShowConfirmDialog(const AMessage: string): Boolean;
+    procedure UpdateURL(const AURL: string; APush: Boolean);
+    procedure HandleError(ARequest: TEHTMLRequest; AError: string; AStatus: Integer);
+    procedure AddCSSClasses(AElement: TJSHTMLElement; const AClass: string);
+    procedure RemoveCSSClasses(AElement: TJSHTMLElement; const AClass: string);
+    // =============================================
     
   public
     constructor Create;
@@ -142,6 +161,39 @@ begin
   Headers := nil;
   if AElement.hasAttribute('data-headers') then
     Headers := TEHTML.Instance.ParseJSONHeaders(AElement.getAttribute('data-headers'));
+  
+  // === PARSE NOVOS ATRIBUTOS ===
+  // Parse indicator
+  if AElement.hasAttribute('data-indicator') then
+    Indicator := AElement.getAttribute('data-indicator')
+  else
+    Indicator := '';
+    
+  // Parse confirm
+  if AElement.hasAttribute('data-confirm') then
+    Confirm := AElement.getAttribute('data-confirm')
+  else
+    Confirm := '';
+    
+  // Parse push-url
+  PushURL := AElement.hasAttribute('data-push-url') and 
+             (LowerCase(AElement.getAttribute('data-push-url')) <> 'false');
+             
+  // Parse replace-url
+  ReplaceURL := AElement.hasAttribute('data-replace-url') and 
+                (LowerCase(AElement.getAttribute('data-replace-url')) <> 'false');
+                
+  // Parse error handling
+  if AElement.hasAttribute('data-error-target') then
+    ErrorTarget := AElement.getAttribute('data-error-target')
+  else
+    ErrorTarget := '';
+    
+  if AElement.hasAttribute('data-error-swap') then
+    ErrorSwap := TEHTML.Instance.ParseSwapStrategy(AElement.getAttribute('data-error-swap'))
+  else
+    ErrorSwap := ssInnerHTML;
+  // ==============================
 end;
 
 procedure TEHTMLRequest.Execute;
@@ -150,6 +202,23 @@ var
   formData, urlParams: string;
   form: TJSHTMLFormElement;
 begin
+  // === CONFIRMAÇÃO ===
+  if Confirm <> '' then
+  begin
+    if not TEHTML.Instance.ShowConfirmDialog(Confirm) then
+      Exit; // Usuário cancelou
+  end;
+  // ==================
+  
+  // === MOSTRAR INDICATOR ===
+  if Indicator <> '' then
+    TEHTML.Instance.ShowIndicator(Indicator);
+  // ========================
+  
+  // === ADICIONAR CLASSES CSS ===
+  TEHTML.Instance.AddCSSClasses(Element, 'ehtml-request');
+  // =============================
+
   xhr := TJSXMLHttpRequest.new;
   
   // Prepare form data if needed
@@ -200,10 +269,27 @@ begin
   begin
     if xhr.readyState = 4 then
     begin
+      // === REMOVER CLASSES E INDICATOR ===
+      TEHTML.Instance.RemoveCSSClasses(Element, 'ehtml-request');
+      if Indicator <> '' then
+        TEHTML.Instance.HideIndicator(Indicator);
+      // ==================================
+      
       if (xhr.status >= 200) and (xhr.status < 300) then
-        TEHTML.Instance.HandleResponse(Self, xhr.responseText)
+      begin
+        // === ATUALIZAR URL SE NECESSÁRIO ===
+        if PushURL or ReplaceURL then
+          TEHTML.Instance.UpdateURL(URL, PushURL);
+        // ===================================
+        
+        TEHTML.Instance.HandleResponse(Self, xhr.responseText);
+      end
       else
-        console.error('EHTML request failed:', xhr.status, xhr.statusText);
+      begin
+        // === TRATAMENTO DE ERRO ===
+        TEHTML.Instance.HandleError(Self, xhr.responseText, xhr.status);
+        // =========================
+      end;
     end;
   end;
   
@@ -234,6 +320,106 @@ begin
     FInstance := TEHTML.Create;
   Result := FInstance;
 end;
+
+// === IMPLEMENTAÇÃO DOS NOVOS MÉTODOS ===
+
+procedure TEHTML.ShowIndicator(const ASelector: string);
+var
+  indicator: TJSHTMLElement;
+begin
+  indicator := GetTargetElement(ASelector, nil);
+  if Assigned(indicator) then
+  begin
+    indicator.style.setProperty('display', 'block');
+    AddCSSClasses(indicator, 'ehtml-indicator-active');
+  end;
+end;
+
+procedure TEHTML.HideIndicator(const ASelector: string);
+var
+  indicator: TJSHTMLElement;
+begin
+  indicator := GetTargetElement(ASelector, nil);
+  if Assigned(indicator) then
+  begin
+    indicator.style.setProperty('display', 'none');
+    RemoveCSSClasses(indicator, 'ehtml-indicator-active');
+  end;
+end;
+
+function TEHTML.ShowConfirmDialog(const AMessage: string): Boolean;
+begin
+  asm
+    pas.Result = confirm(AMessage);
+  end;
+end;
+
+procedure TEHTML.UpdateURL(const AURL: string; APush: Boolean);
+begin
+  if APush then
+  begin
+    asm
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', AURL);
+      }
+    end;
+  end
+  else
+  begin
+    asm
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', AURL);
+      }
+    end;
+  end;
+end;
+
+procedure TEHTML.HandleError(ARequest: TEHTMLRequest; AError: string; AStatus: Integer);
+var
+  targetElement: TJSHTMLElement;
+  errorMessage: string;
+begin
+  // Log do erro
+  console.error('EHTML request failed:', AStatus, AError);
+  
+  // Adicionar classe de erro ao elemento
+  AddCSSClasses(ARequest.Element, 'ehtml-error');
+  
+  // Se tem target específico para erro, usar ele
+  if ARequest.ErrorTarget <> '' then
+  begin
+    targetElement := GetTargetElement(ARequest.ErrorTarget, ARequest.Element);
+    if Assigned(targetElement) then
+    begin
+      errorMessage := AError;
+      if errorMessage = '' then
+        errorMessage := 'Request failed with status: ' + IntToStr(AStatus);
+      SwapContent(targetElement, errorMessage, ARequest.ErrorSwap);
+    end;
+  end;
+end;
+
+procedure TEHTML.AddCSSClasses(AElement: TJSHTMLElement; const AClass: string);
+begin
+  if Assigned(AElement) then
+  begin
+    asm
+      AElement.classList.add(AClass);
+    end;
+  end;
+end;
+
+procedure TEHTML.RemoveCSSClasses(AElement: TJSHTMLElement; const AClass: string);
+begin
+  if Assigned(AElement) then
+  begin
+    asm
+      AElement.classList.remove(AClass);
+    end;
+  end;
+end;
+
+// ======================================
 
 function TEHTML.ParseHTTPMethod(const AValue: string): THTTPMethod;
 var
@@ -460,7 +646,24 @@ begin
   
   if Assigned(targetElement) then
   begin
+    // === ADICIONAR CLASSES DE TRANSIÇÃO ===
+    AddCSSClasses(targetElement, 'ehtml-swapping');
+    // =====================================
+    
     SwapContent(targetElement, AResponse, ARequest.Swap);
+    
+    // === REMOVER CLASSES APÓS UM TEMPO ===
+    asm
+      setTimeout(function() {
+        pas.TEHTML.Instance.RemoveCSSClasses(targetElement, 'ehtml-swapping');
+        pas.TEHTML.Instance.AddCSSClasses(targetElement, 'ehtml-settling');
+        setTimeout(function() {
+          pas.TEHTML.Instance.RemoveCSSClasses(targetElement, 'ehtml-settling');
+        }, 20);
+      }, 0);
+    end;
+    // ====================================
+    
     // Process any new EHTML elements in the response
     Process(targetElement);
   end
