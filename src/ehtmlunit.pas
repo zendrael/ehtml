@@ -18,6 +18,9 @@ type
   // Trigger events
   TTriggerEvent = (teClick, teChange, teSubmit, teLoad, teFocus, teBlur, teKeyUp, teKeyDown, teMouseOver, teMouseOut);
   
+  // Custom handler reference
+  TProcedureRef = reference to procedure;
+
   // Request configuration
   TEHTMLRequest = class
   public
@@ -78,6 +81,9 @@ type
     procedure Initialize;
     procedure Process(AElement: TJSHTMLElement = nil);
     procedure ProcessSelector(const ASelector: string);
+
+    // Custom Handler 
+    procedure AddHandler(const Name: string; Handler: TProcedureRef);
   end;
 
 // Global functions
@@ -85,6 +91,9 @@ procedure EHTMLInit;
 function EHTML: TEHTML;
 
 implementation
+
+var
+  HandlerMap: TJSObject;
 
 const
   HTTP_METHOD_NAMES: array[THTTPMethod] of string = ('GET', 'POST', 'PUT', 'DELETE', 'PATCH');
@@ -201,6 +210,8 @@ var
   xhr: TJSXMLHttpRequest;
   formData, urlParams: string;
   form: TJSHTMLFormElement;
+  handlerName: string;
+  handler: TProcedureRef;
 begin
   // === CONFIRMAÇÃO ===
   if Confirm <> '' then
@@ -209,6 +220,14 @@ begin
       Exit; // Usuário cancelou
   end;
   // ==================
+
+  handlerName := el.getAttribute('data-handler');
+  if (handlerName <> '') and (HandlerMap.hasOwnProperty(handlerName)) then
+  begin
+    handler := TProcedureRef(HandlerMap[handlerName]);
+    if Assigned(handler) then
+      handler();
+  end;
   
   // === MOSTRAR INDICATOR ===
   if Indicator <> '' then
@@ -751,6 +770,11 @@ end;
 procedure EHTMLInit;
 begin
   TEHTML.Instance.Initialize;
+end;
+
+procedure AddHandler(const Name: string; Handler: TProcedureRef);
+begin
+  HandlerMap[Name] := Handler;
 end;
 
 function EHTML: TEHTML;
