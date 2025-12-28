@@ -212,6 +212,15 @@ var
   handler: TProcedureRef;
 begin
   // === CONFIRMAÇÃO ===
+  // Emit data:beforeRequest event
+  if Assigned(Element) then
+  begin
+    var evt: TJSObject;
+    asm
+      evt = new CustomEvent('data:beforeRequest', { detail: { element: this.Element } });
+      this.Element.dispatchEvent(evt);
+    end;
+  end;
   if Confirm <> '' then
   begin
     if not TEHTML.Instance.ShowConfirmDialog(Confirm) then
@@ -401,10 +410,20 @@ var
 begin
   // Log do erro
   console.error('EHTML request failed:', AStatus, AError);
-  
+
+  // Emit data:error event
+  if Assigned(ARequest.Element) then
+  begin
+    var evt: TJSObject;
+    asm
+      evt = new CustomEvent('data:error', { detail: { element: ARequest.Element, status: AStatus, error: AError } });
+      ARequest.Element.dispatchEvent(evt);
+    end;
+  end;
+
   // Adicionar classe de erro ao elemento
   AddCSSClasses(ARequest.Element, 'ehtml-error');
-  
+
   // Se tem target específico para erro, usar ele
   if ARequest.ErrorTarget <> '' then
   begin
@@ -670,23 +689,16 @@ begin
     // === ADICIONAR CLASSES DE TRANSIÇÃO ===
     AddCSSClasses(targetElement, 'ehtml-swapping');
     // =====================================
-    
+
     SwapContent(targetElement, AResponse, ARequest.Swap);
-    
-    // === REMOVER CLASSES APÓS UM TEMPO ===
-    (*
+
+    // Emit data:afterSwap event
+    var evt: TJSObject;
     asm
-      setTimeout(function() {
-        pas.TEHTML.Instance.RemoveCSSClasses(targetElement, 'ehtml-swapping');
-        pas.TEHTML.Instance.AddCSSClasses(targetElement, 'ehtml-settling');
-        setTimeout(function() {
-          pas.TEHTML.Instance.RemoveCSSClasses(targetElement, 'ehtml-settling');
-        }, 20);
-      }, 0);
+      evt = new CustomEvent('data:afterSwap', { detail: { element: targetElement, response: AResponse } });
+      targetElement.dispatchEvent(evt);
     end;
-    *)
-    // ====================================
-    
+
     // Process any new EHTML elements in the response
     Process(targetElement);
   end
