@@ -19,7 +19,7 @@ type
   TTriggerEvent = (teClick, teChange, teSubmit, teLoad, teFocus, teBlur, teKeyUp, teKeyDown, teMouseOver, teMouseOut);
   
   // Custom handler reference
-  TProcedureRef = reference to procedure;
+  TProcedureRef = reference to procedure(Element: TJSHTMLElement);
 
   // Request configuration
   TEHTMLRequest = class
@@ -224,7 +224,7 @@ begin
   begin
     handler := TProcedureRef(HandlerMap[handlerName]);
     if Assigned(handler) then
-      handler();
+      handler(Element);
   end;
 
   // If there is no endpoint, skip AJAX request (handler only)

@@ -167,11 +167,22 @@
       <h2>0. Basic Pascal handler</h2>
       <p>Click the button to load content from Pascal procedure</p>
 
-      <button data-handler="meuHandler" data-target="#get-resultPas">
+      <button data-handler="myHandler" data-target="#get-resultPas">
         Call Pascal Procedure Handler
       </button>
 
-      <div id="get-resultPas" class="result">Results will appear here...</div>
+      <hr />
+
+      <button
+        id="handler-with-params"
+        data-handler="myHandlerWithParams"
+        data-info="Data Info Content"
+        data-foo="Some Value For Foo"
+      >
+        Call Pascal Procedure Handler with Params
+      </button>
+
+      <div id="handler-result" class="result">Results will appear here...</div>
     </div>
 
     <!-- Basic GET Request Example -->
