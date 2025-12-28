@@ -79,11 +79,9 @@ type
     
     class function Instance: TEHTML;
     procedure Initialize;
+    procedure AddHandler(const Name: string; Handler: TProcedureRef);
     procedure Process(AElement: TJSHTMLElement = nil);
     procedure ProcessSelector(const ASelector: string);
-
-    // Custom Handler 
-    procedure AddHandler(const Name: string; Handler: TProcedureRef);
   end;
 
 // Global functions
@@ -221,14 +219,17 @@ begin
   end;
   // ==================
 
-  handlerName := el.getAttribute('data-handler');
+  handlerName := Element.getAttribute('data-handler');
   if (handlerName <> '') and (HandlerMap.hasOwnProperty(handlerName)) then
   begin
     handler := TProcedureRef(HandlerMap[handlerName]);
     if Assigned(handler) then
       handler();
   end;
-  
+
+  // If there is no endpoint, skip AJAX request (handler only)
+  if (URL = '') then Exit;
+
   // === MOSTRAR INDICATOR ===
   if Indicator <> '' then
     TEHTML.Instance.ShowIndicator(Indicator);
@@ -615,27 +616,28 @@ var
   eventName: string;
   hasEHTMLAttr: Boolean;
 begin
-  // Check if element has any EHTML attributes
+  // Check if element has any EHTML or handler attributes
   hasEHTMLAttr := AElement.hasAttribute('data-get') or
-                 AElement.hasAttribute('data-post') or
-                 AElement.hasAttribute('data-put') or
-                 AElement.hasAttribute('data-delete') or
-                 AElement.hasAttribute('data-patch');
-                 
+                  AElement.hasAttribute('data-post') or
+                  AElement.hasAttribute('data-put') or
+                  AElement.hasAttribute('data-delete') or
+                  AElement.hasAttribute('data-patch') or
+                  AElement.hasAttribute('data-handler');
+
   if not hasEHTMLAttr then Exit;
-  
+
   // Check if already processed
   if FProcessedElements.indexOf(AElement) >= 0 then Exit;
-  
+
   // Create request configuration
   request := TEHTMLRequest.Create(AElement);
-  
+
   // Get event name
   eventName := GetEventName(request.Trigger);
-  
+
   // Attach event listener
   AttachEventListener(AElement, eventName, request);
-  
+
   // Mark as processed
   FProcessedElements.push(AElement);
 end;
@@ -672,6 +674,7 @@ begin
     SwapContent(targetElement, AResponse, ARequest.Swap);
     
     // === REMOVER CLASSES APÓS UM TEMPO ===
+    (*
     asm
       setTimeout(function() {
         pas.TEHTML.Instance.RemoveCSSClasses(targetElement, 'ehtml-swapping');
@@ -681,6 +684,7 @@ begin
         }, 20);
       }, 0);
     end;
+    *)
     // ====================================
     
     // Process any new EHTML elements in the response
@@ -726,6 +730,14 @@ begin
   end
   else
     Process;
+
+  if not Assigned(HandlerMap) then
+    HandlerMap := TJSObject.new;
+end;
+
+procedure TEHTML.AddHandler(const Name: string; Handler: TProcedureRef);
+begin
+  HandlerMap[Name] := Handler;
 end;
 
 procedure TEHTML.Process(AElement: TJSHTMLElement = nil);
@@ -740,12 +752,12 @@ begin
     ProcessElement(AElement);
     
     // Process child elements with EHTML attributes
-    elements := AElement.querySelectorAll('[data-get], [data-post], [data-put], [data-delete], [data-patch]');
+    elements := AElement.querySelectorAll('[data-get], [data-post], [data-put], [data-delete], [data-patch], [data-handler]');
   end
   else
   begin
     // Process entire document
-    elements := document.querySelectorAll('[data-get], [data-post], [data-put], [data-delete], [data-patch]');
+    elements := document.querySelectorAll('[data-get], [data-post], [data-put], [data-delete], [data-patch], [data-handler]');
   end;
   
   for i := 0 to elements.length - 1 do
@@ -770,11 +782,6 @@ end;
 procedure EHTMLInit;
 begin
   TEHTML.Instance.Initialize;
-end;
-
-procedure AddHandler(const Name: string; Handler: TProcedureRef);
-begin
-  HandlerMap[Name] := Handler;
 end;
 
 function EHTML: TEHTML;
