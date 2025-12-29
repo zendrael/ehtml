@@ -833,6 +833,60 @@
       };
     </script>
 
+    <div class="demo-section">
+      <h2>
+        8. Fine-grained Attribute Support (data-params, data-disabled-elt,
+        data-encoding, data-headers)
+      </h2>
+      <p>
+        Demonstrates new attribute support for advanced request customization.
+      </p>
+
+      <h3>
+        Button with <code>data-params</code> and <code>data-disabled-elt</code>
+      </h3>
+      <button
+        data-post="/api/params-demo"
+        data-params="foo=bar&amp;baz=qux"
+        data-disabled-elt="#params-btn"
+        data-target="#params-result"
+        id="params-btn"
+      >
+        Send Params (Button disables during request)
+      </button>
+      <div id="params-result" class="result">Result will appear here...</div>
+
+      <h3>
+        Form with <code>data-encoding</code> (<code>application/json</code>)
+      </h3>
+      <form
+        data-post="/api/json-demo"
+        data-encoding="application/json"
+        data-target="#json-result"
+        data-disabled-elt="#json-submit"
+      >
+        <label>Name:</label>
+        <input type="text" name="name" required />
+        <label>Age:</label>
+        <input type="number" name="age" required />
+        <button type="submit" id="json-submit">Send as JSON</button>
+      </form>
+      <div id="json-result" class="result">JSON result will appear here...</div>
+
+      <h3>Button with <code>data-headers</code></h3>
+      <button
+        data-post="/api/headers-demo"
+        data-headers='{"X-Custom-Header": "EHTML-Demo", "Content-Type": "text/plain"}'
+        data-target="#headers-result"
+        id="headers-btn"
+      >
+        Send Custom Headers
+      </button>
+      <div id="headers-result" class="result">
+        Header result will appear here...
+      </div>
+    </div>
+
     <!-- Include the compiled EHTML library -->
     <!-- In a real application, you would include the compiled JavaScript file from Pas2JS -->
     <script>

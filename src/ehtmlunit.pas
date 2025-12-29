@@ -39,6 +39,10 @@ type
     ReplaceURL: Boolean;       // data-replace-url
     ErrorTarget: string;       // data-error-target
     ErrorSwap: TSwapStrategy;  // data-error-swap
+    // === FINE-GRAINED ATTRIBUTES ===
+    Params: string;            // data-params (URL-encoded string or JSON)
+    DisabledElt: string;       // data-disabled-elt (selector)
+    Encoding: string;          // data-encoding (e.g., 'multipart/form-data', 'application/json', etc.)
     // =========================================
     
     constructor Create(AElement: TJSHTMLElement);
@@ -175,31 +179,47 @@ begin
     Indicator := AElement.getAttribute('data-indicator')
   else
     Indicator := '';
-    
+
   // Parse confirm
   if AElement.hasAttribute('data-confirm') then
     Confirm := AElement.getAttribute('data-confirm')
   else
     Confirm := '';
-    
+
   // Parse push-url
   PushURL := AElement.hasAttribute('data-push-url') and 
              (LowerCase(AElement.getAttribute('data-push-url')) <> 'false');
-             
+
   // Parse replace-url
   ReplaceURL := AElement.hasAttribute('data-replace-url') and 
                 (LowerCase(AElement.getAttribute('data-replace-url')) <> 'false');
-                
+
   // Parse error handling
   if AElement.hasAttribute('data-error-target') then
     ErrorTarget := AElement.getAttribute('data-error-target')
   else
     ErrorTarget := '';
-    
+
   if AElement.hasAttribute('data-error-swap') then
     ErrorSwap := TEHTML.Instance.ParseSwapStrategy(AElement.getAttribute('data-error-swap'))
   else
     ErrorSwap := ssInnerHTML;
+
+  // === FINE-GRAINED ATTRIBUTES ===
+  if AElement.hasAttribute('data-params') then
+    Params := AElement.getAttribute('data-params')
+  else
+    Params := '';
+
+  if AElement.hasAttribute('data-disabled-elt') then
+    DisabledElt := AElement.getAttribute('data-disabled-elt')
+  else
+    DisabledElt := '';
+
+  if AElement.hasAttribute('data-encoding') then
+    Encoding := LowerCase(AElement.getAttribute('data-encoding'))
+  else
+    Encoding := '';
   // ==============================
 end;
 
@@ -210,6 +230,7 @@ var
   form: TJSHTMLFormElement;
   handlerName: string;
   handler: TProcedureRef;
+  disabledElement: TJSHTMLElement;
 begin
   // === CONFIRMAÇÃO ===
   // Emit data:beforeRequest event
@@ -239,28 +260,69 @@ begin
   // If there is no endpoint, skip AJAX request (handler only)
   if (URL = '') then Exit;
 
+  // === DISABLE ELEMENT IF NEEDED ===
+  disabledElement := nil;
+  if DisabledElt <> '' then
+  begin
+    disabledElement := TEHTML.Instance.GetTargetElement(DisabledElt, Element);
+    if Assigned(disabledElement) then
+      disabledElement.setAttribute('disabled', 'true');
+  end;
+
   // === MOSTRAR INDICATOR ===
   if Indicator <> '' then
     TEHTML.Instance.ShowIndicator(Indicator);
   // ========================
-  
+
   // === ADICIONAR CLASSES CSS ===
   TEHTML.Instance.AddCSSClasses(Element, 'ehtml-request');
   // =============================
 
   xhr := TJSXMLHttpRequest.new;
   
-  // Prepare form data if needed
+  // Prepare form data or params
   formData := '';
   if (Method <> hmGET) and (Element.tagName = 'FORM') then
   begin
     form := TJSHTMLFormElement(Element);
-    formData := TEHTML.Instance.SerializeForm(form);
+    if (Encoding = 'multipart/form-data') then
+    begin
+      // Use FormData API (not supported in Pas2JS directly, so fallback to default for now)
+      formData := TEHTML.Instance.SerializeForm(form); // TODO: support FormData
+    end
+    else if (Encoding = 'application/json') then
+    begin
+      // Serialize as JSON
+      asm
+        var obj = {};
+        var elements = form.elements;
+        for (var i = 0; i < elements.length; i++) {
+          var el = elements[i];
+          if (el.name) obj[el.name] = el.value;
+        }
+        formData = JSON.stringify(obj);
+      end;
+    end
+    else
+      formData := TEHTML.Instance.SerializeForm(form);
+  end
+  else if (Params <> '') then
+  begin
+    // If data-params is present, use it as formData (for POST/PUT/PATCH) or as query (for GET)
+    if (Method = hmGET) then
+    begin
+      if Pos('?', URL) > 0 then
+        URL := URL + '&' + Params
+      else
+        URL := URL + '?' + Params;
+    end
+    else
+      formData := Params;
   end;
-  
-  // Prepare URL with parameters for GET requests
+
+  // Prepare URL with parameters for GET requests (form)
   urlParams := '';
-  if (Method = hmGET) and (Element.tagName = 'FORM') then
+  if (Method = hmGET) and (Element.tagName = 'FORM') and (Params = '') then
   begin
     form := TJSHTMLFormElement(Element);
     urlParams := TEHTML.Instance.SerializeForm(form);
@@ -278,8 +340,17 @@ begin
   
   // Set headers
   if Method in [hmPOST, hmPUT, hmPATCH] then
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    
+  begin
+    if (Encoding = 'application/json') then
+      xhr.setRequestHeader('Content-Type', 'application/json')
+    else if (Encoding = 'multipart/form-data') then
+    begin
+      // Let browser set boundary automatically (do not set Content-Type)
+    end
+    else
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+  end;
+
   // Set custom headers
   if Assigned(Headers) then
   begin
@@ -327,6 +398,16 @@ begin
     xhr.send(formData)
   else
     xhr.send;
+
+  // === ENABLE ELEMENT AGAIN AFTER REQUEST (async, so use onreadystatechange) ===
+  if Assigned(disabledElement) then
+  begin
+    xhr.onreadystatechange := procedure
+    begin
+      if xhr.readyState = 4 then
+        disabledElement.removeAttribute('disabled');
+    end;
+  end;
 end;
 
 // TEHTML implementation
