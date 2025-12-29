@@ -887,6 +887,56 @@
       </div>
     </div>
 
+    <!--
+Sample code for listening to EHTML custom lifecycle events (data:beforeRequest, data:afterSwap, data:error)
+Add this to your HTML or JS to observe and react to EHTML events.
+-->
+    <script>
+      // Listen for beforeRequest event
+
+      document.addEventListener("data:beforeRequest", function (e) {
+        const el = e.detail.element;
+        console.log("[data:beforeRequest]", el);
+        // Example: show a custom loader
+        // if (el.matches('#myButton')) { ... }
+      });
+
+      // Listen for afterSwap event
+
+      document.addEventListener("data:afterSwap", function (e) {
+        const el = e.detail.element;
+        const response = e.detail.response;
+        console.log("[data:afterSwap]", el, response);
+        // Example: highlight updated content
+        // el.classList.add('just-updated');
+      });
+
+      // Listen for error event
+
+      document.addEventListener("data:error", function (e) {
+        const el = e.detail.element;
+        const status = e.detail.status;
+        const error = e.detail.error;
+        console.error("[data:error]", el, status, error);
+        // Example: show a toast or alert
+        // alert('Request failed: ' + status);
+      });
+    </script>
+
+    <div class="demo-section">
+      <h2>9. Custom Event Demo</h2>
+      <p>
+        Open the browser console and interact with EHTML elements to see
+        lifecycle events being logged.
+      </p>
+      <button data-get="/api/hello" data-target="#event-demo-result">
+        Trigger AJAX (see console)
+      </button>
+      <div id="event-demo-result" class="result">
+        Event demo result will appear here...
+      </div>
+    </div>
+
     <!-- Include the compiled EHTML library -->
     <!-- In a real application, you would include the compiled JavaScript file from Pas2JS -->
     <script>
@@ -980,55 +1030,5 @@
       </p>
       <p>Built with ❤️ using Object Pascal and compiled to JavaScript</p>
     </footer>
-
-    <!--
-Sample code for listening to EHTML custom lifecycle events (data:beforeRequest, data:afterSwap, data:error)
-Add this to your HTML or JS to observe and react to EHTML events.
--->
-    <script>
-      // Listen for beforeRequest event
-
-      document.addEventListener("data:beforeRequest", function (e) {
-        const el = e.detail.element;
-        console.log("[data:beforeRequest]", el);
-        // Example: show a custom loader
-        // if (el.matches('#myButton')) { ... }
-      });
-
-      // Listen for afterSwap event
-
-      document.addEventListener("data:afterSwap", function (e) {
-        const el = e.detail.element;
-        const response = e.detail.response;
-        console.log("[data:afterSwap]", el, response);
-        // Example: highlight updated content
-        // el.classList.add('just-updated');
-      });
-
-      // Listen for error event
-
-      document.addEventListener("data:error", function (e) {
-        const el = e.detail.element;
-        const status = e.detail.status;
-        const error = e.detail.error;
-        console.error("[data:error]", el, status, error);
-        // Example: show a toast or alert
-        // alert('Request failed: ' + status);
-      });
-    </script>
-
-    <div class="demo-section">
-      <h2>Custom Event Demo</h2>
-      <p>
-        Open the browser console and interact with EHTML elements to see
-        lifecycle events being logged.
-      </p>
-      <button data-get="/api/hello" data-target="#event-demo-result">
-        Trigger AJAX (see console)
-      </button>
-      <div id="event-demo-result" class="result">
-        Event demo result will appear here...
-      </div>
-    </div>
   </body>
 </html>

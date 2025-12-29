@@ -231,14 +231,14 @@ var
   handlerName: string;
   handler: TProcedureRef;
   disabledElement: TJSHTMLElement;
+  evt: TJSObject;
 begin
   // === CONFIRMAÇÃO ===
   // Emit data:beforeRequest event
   if Assigned(Element) then
   begin
-    var evt: TJSObject;
     asm
-      evt = new CustomEvent('data:beforeRequest', { detail: { element: this.Element } });
+      let evt = new CustomEvent('data:beforeRequest', { detail: { element: this.Element } });
       this.Element.dispatchEvent(evt);
     end;
   end;
@@ -488,6 +488,7 @@ procedure TEHTML.HandleError(ARequest: TEHTMLRequest; AError: string; AStatus: I
 var
   targetElement: TJSHTMLElement;
   errorMessage: string;
+  evt: TJSObject;
 begin
   // Log do erro
   console.error('EHTML request failed:', AStatus, AError);
@@ -495,9 +496,8 @@ begin
   // Emit data:error event
   if Assigned(ARequest.Element) then
   begin
-    var evt: TJSObject;
     asm
-      evt = new CustomEvent('data:error', { detail: { element: ARequest.Element, status: AStatus, error: AError } });
+      let evt = new CustomEvent('data:error', { detail: { element: ARequest.Element, status: AStatus, error: AError } });
       ARequest.Element.dispatchEvent(evt);
     end;
   end;
@@ -761,6 +761,7 @@ end;
 procedure TEHTML.HandleResponse(ARequest: TEHTMLRequest; AResponse: string);
 var
   targetElement: TJSHTMLElement;
+  evt: TJSObject;
 begin
   // Find target element
   targetElement := GetTargetElement(ARequest.Target, ARequest.Element);
@@ -774,9 +775,8 @@ begin
     SwapContent(targetElement, AResponse, ARequest.Swap);
 
     // Emit data:afterSwap event
-    var evt: TJSObject;
     asm
-      evt = new CustomEvent('data:afterSwap', { detail: { element: targetElement, response: AResponse } });
+      let evt = new CustomEvent('data:afterSwap', { detail: { element: targetElement, response: AResponse } });
       targetElement.dispatchEvent(evt);
     end;
 
