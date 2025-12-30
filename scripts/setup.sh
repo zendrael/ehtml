@@ -9,19 +9,21 @@
 echo "Setup Pas2JS..."
 
 PAS2JSDIR="$HOME/.local/share/applications/"
-PAS2JSZIP="https://getpas2js.freepascal.org/downloads/linux/pas2js-linux-x86_64-current.zip"
+
+ARCH=`uname -m`
+echo "Detected architecture: $ARCH"
+
+PAS2JSZIP="https://getpas2js.freepascal.org/downloads/linux/pas2js-linux-$ARCH-current.zip"
+echo "Using Pas2JS download link: $PAS2JSZIP"
+
 
 # macOS 
 # https://getpas2js.freepascal.org/downloads/darwin/pas2js-darwin-x86_64-current.zip
 
-# if the folder $PAS2JSDIR/pas2js does not exist, create it
-if [ ! -d $PAS2JSDIR ]; then
-  echo "Creating directory $PAS2JSDIR..."
-  mkdir -p $PAS2JSDIR
-fi
-
 echo "Checking installation..."
 if [ ! -d $PAS2JSDIR/pas2js ]; then
+  mkdir -p $PAS2JSDIR
+
   echo "Downloading..."
 
   cd $PAS2JSDIR && \
