@@ -44,6 +44,7 @@ pas2js -Jc -Jirtl.js -Tbrowser src/main.pas \
   -Fu"src/*" \
   -Fu"src/*/*" \
   -Fu"src/*/*/*" \
+  -Pecmascript6 \
   -vewhl -B -Jm -Jminclude -JRjs
 
 #(backend)using nodejs/bun as a target

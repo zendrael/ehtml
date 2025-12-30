@@ -37,7 +37,7 @@ cp -r public/* dist/
 
 echo "Compiling to dist..."
 #(frontend) using browser as a target
-pas2js -Jc -Jirtl.js -JRjs -Tbrowser src/main.pas -Fu"src/*" -Fu"src/*/*" -Fu"src/*/*/*" -O2 -B
+pas2js -Jc -Jirtl.js -JRjs -Tbrowser -Pecmascript6 src/main.pas -Fu"src/*" -Fu"src/*/*" -Fu"src/*/*/*" -O2 -B
 
 #(backend)using nodejs/bun as a target
 #pas2js -Jc -Jirtl.js -JRjs -Tnodejs src/main.pas -Fu"src/*" -Fu"src/*/*" -Fu"src/*/*/*" -O2 -B
